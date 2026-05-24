@@ -20,10 +20,45 @@ class _PenindakMainScreenState extends State<PenindakMainScreen> {
     const ProfileScreen(),
   ];
 
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: AppColors.background,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      title: const Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundImage: NetworkImage(
+              'https://i.pravatar.cc/150?img=11',
+            ),
+          ),
+          SizedBox(width: 12),
+          Text(
+            "Suara Mawa",
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.notifications_none_outlined, color: AppColors.primary),
+          onPressed: () {},
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: _buildAppBar(),
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,

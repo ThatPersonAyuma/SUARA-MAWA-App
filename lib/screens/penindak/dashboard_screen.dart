@@ -16,66 +16,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: _buildHeader()
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildMapSection(),
-                      const SizedBox(height: 24),
-                      _buildStatsSection(),
-                      const SizedBox(height: 32),
-                      _buildInterventionsHeader(),
-                      const SizedBox(height: 16),
-                      _buildInterventionsList(),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
+        child: Expanded(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
               ),
-            )
-          ],
-        )
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildMapSection(),
+                  const SizedBox(height: 24),
+                  _buildStatsSection(),
+                  const SizedBox(height: 32),
+                  _buildInterventionsHeader(),
+                  const SizedBox(height: 16),
+                  _buildInterventionsList(),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            const CircleAvatar(
-              radius: 20,
-              backgroundImage: NetworkImage(
-                'https://i.pravatar.cc/150?img=11',
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              "Suara Mawa",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
-          ],
-        ),
-        IconButton(
-          icon: Icon(Icons.notifications_none_outlined, color: AppColors.primary),
-          onPressed: () {},
-        ),
-      ],
     );
   }
 
@@ -124,7 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -231,10 +195,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 4),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 14,
-              color: textColor.withOpacity(0.8),
-            ),
+            style: TextStyle(fontSize: 14, color: textColor.withOpacity(0.8)),
           ),
         ],
       ),
@@ -247,10 +208,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         const Text(
           "Aspirasi terbaru",
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         GestureDetector(
           onTap: () {},
@@ -279,13 +237,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _buildInterventionCard(
           title: "Access Point di B1 fasilkom tidak nyala",
           category: "Prasarana",
-          description: "Mohon diperbaiki access point nya. Soalnya besok akan diadakan UTS yang sangat sulit",
+          description:
+              "Mohon diperbaiki access point nya. Soalnya besok akan diadakan UTS yang sangat sulit",
         ),
         const SizedBox(height: 16),
         _buildInterventionCard(
           title: "PPT belum dikasih",
           category: "Mata Kuliah",
-          description: "Pada mata kuliah ilmu hitam, ppt dari pertemuan awal sampai pertemuan 9 masih belum diberikan",
+          description:
+              "Pada mata kuliah ilmu hitam, ppt dari pertemuan awal sampai pertemuan 9 masih belum diberikan",
         ),
       ],
     );
@@ -335,10 +295,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(width: 4),
               Text(
                 category,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.inactive,
-                ),
+                style: TextStyle(fontSize: 14, color: AppColors.inactive),
               ),
             ],
           ),
