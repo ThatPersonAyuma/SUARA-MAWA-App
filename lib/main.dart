@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:suara_mawa/screens/penindak/penindak_main_screen.dart';
+// import 'package:suara_mawa/screens/penindak/penindak_main_screen.dart';
+import 'package:suara_mawa/screens/auth/index.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,7 +16,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'PublicSans'
       ),
-      home: PenindakMainScreen()
+      // home: VerifyEmailPage(),
+      home: FirstPage()
+      // home: PenindakMainScreen()
     );
   }
 }
