@@ -72,7 +72,6 @@ class _NimFormState extends State<NimForm> {
         return false;
       }
     }
-    ;
   }
 
   @override
