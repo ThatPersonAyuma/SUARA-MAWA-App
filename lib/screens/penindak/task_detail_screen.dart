@@ -714,7 +714,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final double? lng = (data['locationLong'] as num?)?.toDouble();
     if (lat == null || lng == null) return const SizedBox.shrink();
 
+    final String? locationDetail = data['locationDetail'] as String?;
+    final bool hasDetail = locationDetail != null && locationDetail.isNotEmpty;
     final mapCenter = LatLng(lat, lng);
+
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFF4F5F7),
@@ -747,7 +750,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             ),
           ),
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+            borderRadius: hasDetail
+                ? BorderRadius.zero
+                : const BorderRadius.vertical(bottom: Radius.circular(12)),
             child: SizedBox(
               height: 250,
               child: FlutterMap(
@@ -778,6 +783,27 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               ),
             ),
           ),
+          if (hasDetail)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      locationDetail,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[700],
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
