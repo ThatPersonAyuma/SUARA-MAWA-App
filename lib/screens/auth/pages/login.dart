@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:suara_mawa/screens/auth/controller/auth_service.dart';
 import 'package:flutter/gestures.dart';
 import 'package:suara_mawa/utils/app_colors.dart';
 import 'package:suara_mawa/screens/auth/index.dart';
 
-class LoginForm extends StatefulWidget {
+class LoginForm extends ConsumerStatefulWidget {
   const LoginForm({super.key});
 
   @override
-  State<StatefulWidget> createState() {
+  ConsumerState<LoginForm> createState() {
     return _LoginFormState();
   }
 }
 
-class _LoginFormState extends State<LoginForm> {
+class _LoginFormState extends ConsumerState<LoginForm> {
   final _formKey = GlobalKey<FormState>();
   final _authService = AuthService();
   final emailController = TextEditingController(text: '');
@@ -187,12 +188,9 @@ class _LoginFormState extends State<LoginForm> {
                   // Change the icon based on the state
                   _obscureText ? Icons.visibility_off : Icons.visibility,
                 ),
-                onPressed: () {
+                onPressed: 
                   // 4. Update the state to show/hide the password
-                  setState(() {
-                    _obscureText = !_obscureText;
-                  });
-                },
+                  _toggle,
               ),
             ),
             // suffixIcon: Icon(Icons.error),
@@ -215,7 +213,7 @@ class _LoginFormState extends State<LoginForm> {
                   pwController.text,
                 );
                 if (res && mounted) {
-                  var (result, kode) = await _authService.checkAuth();
+                  var (result, kode) = await _authService.checkAuth(ref);
                   if (!result) {
                     if (mounted) {
                       _authService.HandleError(kode, context);
@@ -263,7 +261,7 @@ class _LoginFormState extends State<LoginForm> {
             onPressed: () async {
               final res = await loginOauth();
               if (res && mounted) {
-                var (result, kode) = await _authService.checkAuth();
+                var (result, kode) = await _authService.checkAuth(ref);
                 if (!result) {
                   if (mounted) {
                     _authService.HandleError(kode, context);

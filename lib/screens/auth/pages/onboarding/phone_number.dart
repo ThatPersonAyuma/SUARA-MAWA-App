@@ -16,111 +16,196 @@ class PhoneNumber extends StatefulWidget {
 
 class _PhoneNumberState extends State<PhoneNumber> {
   final _authService = AuthService();
-  bool _isLoading = false;
+  bool _isLoading = true;
   final nomorHPController = TextEditingController(text: '');
   final textStyle = const TextStyle(color: Colors.black, fontSize: 16);
   final errorStyle = const TextStyle(color: Colors.red, fontSize: 16);
+  bool _isFilled = false;
 
   @override
   void initState() {
     super.initState();
-    // Move your logic here
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final user = await _authService.getUser();
+    print(user);
+
+    if (user != null) {
+      if (user.phoneNumber != null) {
+        setState(() {
+          _isFilled = true;
+          nomorHPController.text = user.phoneNumber!;
+        });
+      } else {
+        setState(() {
+          _isFilled = false;
+        });
+      }
+    }
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 10,
+    return Stack(
       children: [
-        const SizedBox(height: 60),
-        StepProgressView(
-          width: MediaQuery.of(context).size.width,
-          currentStep: 3,
-          activeColor: AppColors.primary,
-          titles: Onboarding.stepNames,
-        ),
-        const SizedBox(height: 80),
-        const Text(
-          "Nomor Telepon",
-          textAlign: TextAlign.center,
-          softWrap: true,
-          maxLines: 2,
-          style: TextStyle(color: Colors.black, fontSize: 26),
-        ),
-        const Text(
-          "Silakan isi nomor telepon akun anda",
-          textAlign: TextAlign.center,
-          softWrap: true,
-          maxLines: 2,
-          style: TextStyle(color: Colors.black, fontSize: 14),
-        ),
-        const SizedBox(height: 20),
-        TextFormField(
-          style: textStyle,
-          decoration: InputDecoration(
-            hintStyle: textStyle,
-            hintText: 'Nomor Telepon',
-            labelStyle: textStyle,
-            labelText: 'Nomor telepon',
-            errorStyle: errorStyle,
-            border: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.black, width: 2.0),
-            ),
-          ),
-          controller: nomorHPController,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Masukkan email';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () async {
-            setState(() {
-              _isLoading = true;
-            });
-            var (res, code) = await _authService.appendNomorHP(
-              nomorHPController.text,
-            );
-            if (res) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => PhoneVerifyPage()),
-              );
-            } else {
-              _authService.HandleError(code ?? '', context);
-            }
-            setState(() {
-              _isLoading = false;
-            });
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            minimumSize: const Size(double.infinity, 44),
-          ),
-          child: _isLoading
-              ? const CircularProgressIndicator(
-                  color: Colors.black,
-                  strokeWidth: 2,
-                )
-              : const Text(
-                  "Tambahkan Nomor Telepon",
-                  style: TextStyle(color: AppColors.white, fontSize: 16),
+        SafeArea(
+          child: Column(
+            children: [
+              // ======================
+              // FIXED PROGRESS BAR
+              // ======================
+              Padding(
+                padding: const EdgeInsets.only(top: 40, left: 24, right: 24),
+                child: StepProgressView(
+                  width: MediaQuery.of(context).size.width,
+                  currentStep: 3,
+                  activeColor: AppColors.primary,
+                  titles: Onboarding.stepNames,
                 ),
+              ),
+
+              // ======================
+              // SCROLLABLE CONTENT
+              // ======================
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 40,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: 10,
+                    children: [
+                      const SizedBox(height: 20),
+                      const Text(
+                        "Nomor Telepon",
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                        maxLines: 2,
+                        style: TextStyle(color: Colors.black, fontSize: 26),
+                      ),
+                      const Text(
+                        "Silakan isi nomor telepon akun anda",
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                        maxLines: 2,
+                        style: TextStyle(color: Colors.black, fontSize: 14),
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        style: textStyle,
+                        decoration: InputDecoration(
+                          hintStyle: textStyle,
+                          hintText: 'Nomor Telepon',
+                          labelStyle: textStyle,
+                          labelText: 'Nomor telepon',
+                          errorStyle: errorStyle,
+                          border: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.black,
+                              width: 2.0,
+                            ),
+                          ),
+                        ),
+                        controller: nomorHPController,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Masukkan email';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      if (_isFilled) ElevatedButton(
+                        onPressed: ()async {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PhonePage(),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          minimumSize: const Size(double.infinity, 44),
+                        ),
+                        child: const Text(
+                                "Selanjutnya",
+                                style: TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 16,
+                                ),
+                              ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          setState(() {
+                            _isLoading = true;
+                          });
+                          var (res, code) = await _authService.appendNomorHP(
+                            nomorHPController.text,
+                          );
+                          if (res) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PhoneVerifyPage(),
+                              ),
+                            );
+                          } else {
+                            _authService.HandleError(code ?? '', context);
+                          }
+                          setState(() {
+                            _isLoading = false;
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          minimumSize: const Size(double.infinity, 44),
+                        ),
+                        child: _isFilled ? const Text(
+                                "Update Nomor Telepon",
+                                style: TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 16,
+                                ),
+                              ) : const Text(
+                                "Tambahkan Nomor Telepon",
+                                style: TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 16,
+                                ),
+                              ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => NimPage()),
+                          );
+                        },
+                        child: Text("Kembali"),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => NimPage()),
-            );
-          },
-          child: Text("Kembali"),
-        ),
+        if (_isLoading)
+          const Opacity(
+            opacity: 0.6,
+            child: ModalBarrier(dismissible: false, color: Colors.black),
+          ),
+        if (_isLoading) const Center(child: CircularProgressIndicator()),
       ],
     );
   }

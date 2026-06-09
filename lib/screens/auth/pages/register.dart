@@ -1,19 +1,20 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:suara_mawa/screens/auth/controller/auth_service.dart';
 import 'package:suara_mawa/screens/auth/index.dart';
 import 'package:suara_mawa/utils/app_colors.dart';
 
-class RegisterForm extends StatefulWidget {
+class RegisterForm extends ConsumerStatefulWidget {
   const RegisterForm({super.key});
 
   @override
-  State<StatefulWidget> createState() {
+  ConsumerState<ConsumerStatefulWidget> createState() {
     return _RegisterFormState();
   }
 }
 
-class _RegisterFormState extends State<RegisterForm> {
+class _RegisterFormState extends ConsumerState<RegisterForm> {
   final _formKey = GlobalKey<FormState>();
   final _authService = AuthService();
   final fullNameController = TextEditingController(text: '');
@@ -44,7 +45,7 @@ class _RegisterFormState extends State<RegisterForm> {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text("Register berhasil")));
-          var (result, kode) = await _authService.checkAuth();
+          var (result, kode) = await _authService.checkAuth(ref);
           if (!result) {
             if (mounted) {
               _authService.HandleError(kode, context);
@@ -97,7 +98,7 @@ class _RegisterFormState extends State<RegisterForm> {
       print("Status: $isSucces Content: $content");
       if (isSucces) {
         if (content != null && mounted) {
-          var (result, kode) = await _authService.checkAuth();
+          var (result, kode) = await _authService.checkAuth(ref);
           if (!result) {
             if (mounted) {
               _authService.HandleError(kode, context);
@@ -214,12 +215,9 @@ class _RegisterFormState extends State<RegisterForm> {
                   // Change the icon based on the state
                   _obscureText ? Icons.visibility_off : Icons.visibility,
                 ),
-                onPressed: () {
+                onPressed:
                   // 4. Update the state to show/hide the password
-                  setState(() {
-                    _obscureText = !_obscureText;
-                  });
-                },
+                  _toggle
               ),
             ),
             // suffixIcon: Icon(Icons.error),

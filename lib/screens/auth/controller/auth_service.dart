@@ -1,70 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:suara_mawa/screens/auth/index.dart';
-
-class User {
-  final String id;
-  final String name;
-  final String email;
-  final String? photoProfileId;
-  final bool emailVerified;
-  final String? phoneNumber;
-  final bool phoneNumberVerified;
-  final UserRole userRole;
-
-  User({
-    required this.id,
-    required this.name,
-    required this.email,
-    this.photoProfileId,
-    required this.emailVerified,
-    this.phoneNumber,
-    required this.phoneNumberVerified,
-    required this.userRole,
-  });
-
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'],
-      name: json['name'],
-      email: json['email'],
-      photoProfileId: json['photoProfileId'],
-      emailVerified: json['emailVerified'],
-      phoneNumber: json['phoneNumber'],
-      phoneNumberVerified: json['phoneNumberVerified'],
-      userRole: UserRole.fromJson(json['userRole']),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'email': email,
-      'photoProfileId': photoProfileId,
-      'emailVerified': emailVerified,
-      'phoneNumber': phoneNumber,
-      'phoneNumberVerified': phoneNumberVerified,
-      'userRole': userRole.toJson(),
-    };
-  }
-}
-
-class UserRole {
-  final String name;
-
-  UserRole({required this.name});
-
-  factory UserRole.fromJson(Map<String, dynamic> json) {
-    return UserRole(name: json['name']);
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'name': name};
-  }
-}
+import 'package:suara_mawa/utils/user_controller.dart';
 
 class AuthService {
   static const String baseUrl = String.fromEnvironment(
@@ -81,7 +21,7 @@ class AuthService {
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  Future<(bool, String)> checkAuth() async {
+  Future<(bool, String)> checkAuth(WidgetRef ref) async {
     try {
       String? token = await getToken();
       if (token == null) {
@@ -94,11 +34,21 @@ class AuthService {
         token = code;
       } // langsung ke dashboard
 
-      await _dio.get(
+      final response = await _dio.get(
         '/user/check',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-
+      final user = User.fromJson(response.data);
+      ref.read(userControllerProvider.notifier).update(
+        UserModel(
+          user: user,
+          token: token,
+          mahasiswaDetail: user.userRole.name == "MAHASISWA" ? MahasiswaDetail.fromJson(response.data['mahasiswaDetail']) : null, 
+          penindakDetail: user.userRole.name == "PENINDAK" ? PenindakDetail.fromJson(response.data['penindakDetail']) : null,
+          adminDetail: user.userRole.name == "ADMIN" ? AdminDetail.fromJson(response.data['adminDetail']) : null,
+        )
+      );
+      print("Success, : ${ref.read(userControllerProvider).user?.name}");
       return (true, 'success');
     } on DioException catch (e) {
       print(e.response.toString());
@@ -187,10 +137,7 @@ class AuthService {
       if (isSuccess) {
         saveEmailPw(email, password);
       }
-      return (
-        isSuccess,
-        isSuccess ? "success" : data["message"].toString(),
-      );
+      return (isSuccess, isSuccess ? "success" : data["message"].toString());
     } on DioException catch (e) {
       return (false, e.response?.data['code'].toString());
     }
@@ -230,8 +177,9 @@ class AuthService {
     }
   }
 
-  Future<void> logout() async {
+  Future<void> logout(WidgetRef ref) async {
     await _storage.deleteAll();
+    ref.read(userControllerProvider.notifier).destroy();
   }
 
   Future<String?> getToken() async {
@@ -324,7 +272,7 @@ class AuthService {
     }
   }
 
-  Future<String?> getMahasiswaDetail() async {
+  Future<Map<String, dynamic>?> getMahasiswaDetail() async {
     try {
       final token = await this.getToken();
       print('sending, token: $token');
