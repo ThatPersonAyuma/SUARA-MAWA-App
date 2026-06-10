@@ -4,7 +4,74 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:suara_mawa/screens/auth/index.dart';
-import 'package:suara_mawa/utils/user_controller.dart';
+import 'package:suara_mawa/screens/penindak/penindak_main_screen.dart';
+import 'package:suara_mawa/screens/aspirasi/aspirasi_main_screen.dart';
+
+class User {
+  final String id;
+  final String name;
+  final String email;
+  final String? photoProfileId;
+  final bool emailVerified;
+  final String? phoneNumber;
+  final bool phoneNumberVerified;
+  final UserRole? userRole;
+  final int? userRoleId;
+
+  User({
+    required this.id,
+    required this.name,
+    required this.email,
+    this.photoProfileId,
+    required this.emailVerified,
+    this.phoneNumber,
+    required this.phoneNumberVerified,
+    this.userRole,
+    this.userRoleId,
+  });
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id'],
+      name: json['name'],
+      email: json['email'],
+      photoProfileId: json['photoProfileId']?.toString() ?? json['image']?.toString(),
+      emailVerified: json['emailVerified'] ?? false,
+      phoneNumber: json['phoneNumber'],
+      phoneNumberVerified: json['phoneNumberVerified'] ?? false,
+      userRole: json['userRole'] != null ? UserRole.fromJson(json['userRole']) : null,
+      userRoleId: json['userRoleId'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'photoProfileId': photoProfileId,
+      'emailVerified': emailVerified,
+      'phoneNumber': phoneNumber,
+      'phoneNumberVerified': phoneNumberVerified,
+      'userRole': userRole?.toJson(),
+      'userRoleId': userRoleId,
+    };
+  }
+}
+
+class UserRole {
+  final String name;
+
+  UserRole({required this.name});
+
+  factory UserRole.fromJson(Map<String, dynamic> json) {
+    return UserRole(name: json['name']);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'name': name};
+  }
+}
 
 class AuthService {
   static const String baseUrl = String.fromEnvironment(
@@ -88,9 +155,13 @@ class AuthService {
       final data = response.data;
       print("Data: $data");
       final token = data["token"];
+      final userRoleId = data["user"]?["userRoleId"];
 
       if (token != null) {
         await _storage.write(key: "auth_token", value: token);
+      }
+      if (userRoleId != null) {
+        await _storage.write(key: "userRoleId", value: userRoleId.toString());
       }
 
       return (true, token.toString());
@@ -111,8 +182,12 @@ class AuthService {
       final data = response.data;
 
       final token = data["token"];
+      final userRoleId = data["user"]?["userRoleId"];
       if (token != null) {
         await _storage.write(key: "auth_token", value: token);
+      }
+      if (userRoleId != null) {
+        await _storage.write(key: "userRoleId", value: userRoleId.toString());
       }
       return (true, token.toString());
     } on DioException catch (e) {
@@ -264,9 +339,14 @@ class AuthService {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       print(response);
-      final user = User.fromJson(response.data);
+      final data = response.data;
+      final userData = data['data'] ?? data['user'] ?? data;
+      final user = User.fromJson(userData);
       return user;
     } on DioException catch (e) {
+      print(e.toString());
+      return null;
+    } catch (e) {
       print(e.toString());
       return null;
     }
@@ -347,10 +427,31 @@ class AuthService {
         );
         break;
       case "SUCCESS":
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => DashboardPage()),
-        );
+        final userRoleIdStr = await _storage.read(key: "userRoleId");
+        int? userRoleId = int.tryParse(userRoleIdStr ?? '');
+
+        if (userRoleId == null) {
+          final user = await getUser();
+          userRoleId = user?.userRoleId;
+        }
+
+        if (userRoleId == 2) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const PenindakMainScreen()),
+          );
+        } else if (userRoleId == 1) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const AspirasiMainScreen()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => DashboardPage()),
+          );
+        }
+        break;
       default:
         break;
     }
