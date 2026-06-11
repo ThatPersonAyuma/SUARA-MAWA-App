@@ -21,6 +21,14 @@ class FormAspirasiScreen extends StatefulWidget {
 }
 
 class _FormAspirasiScreenState extends State<FormAspirasiScreen> {
+  static const String _traceTag = 'FormAspirasi';
+  static const int _maxAttachmentBytes = 5 * 1024 * 1024;
+  static const Set<String> _allowedAttachmentExtensions = {
+    'jpg',
+    'jpeg',
+    'png',
+  };
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -36,11 +44,12 @@ class _FormAspirasiScreenState extends State<FormAspirasiScreen> {
 
   List<ReportCategory> _categories = [];
   List<ReportDepartment> _departments = [];
-  List<File> _attachments = [];
+  final List<File> _attachments = [];
 
   @override
   void initState() {
     super.initState();
+    _trace('initState');
     _loadLookupData();
   }
 
@@ -53,6 +62,7 @@ class _FormAspirasiScreenState extends State<FormAspirasiScreen> {
 
   Future<void> _loadLookupData() async {
     try {
+      _trace('loadLookupData start');
       final results = await Future.wait([
         _reportService.getAllCategories(),
         _reportService.getAllDepartments(),
@@ -64,25 +74,58 @@ class _FormAspirasiScreenState extends State<FormAspirasiScreen> {
         _departments = results[1] as List<ReportDepartment>;
         _isLoadingLookups = false;
       });
+      _trace(
+        'loadLookupData success '
+        'categories=${_categories.length}, departments=${_departments.length}',
+      );
     } catch (e) {
+      _trace('loadLookupData error=$e');
       if (!mounted) return;
       setState(() => _isLoadingLookups = false);
     }
   }
 
   Future<void> _handleSubmit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final traceId = DateTime.now().microsecondsSinceEpoch.toString();
+    _trace('[$traceId] submit tapped');
+
+    final formValid = _formKey.currentState?.validate() ?? false;
+    _trace(
+      '[$traceId] formValidation '
+      'isValid=$formValid, '
+      'titleLength=${_titleController.text.trim().length}, '
+      'descriptionLength=${_descriptionController.text.trim().length}',
+    );
+    if (!formValid) return;
 
     if (_selectedCategoryId == null) {
+      _trace('[$traceId] submit blocked: selectedCategoryId=null');
       _showSnackBar('Please select a category', isError: true);
       return;
     }
     if (_selectedDepartmentId == null) {
+      _trace('[$traceId] submit blocked: selectedDepartmentId=null');
       _showSnackBar('Please select a department', isError: true);
       return;
     }
 
+    _trace(
+      '[$traceId] submit state '
+      'selectedCategoryId=$_selectedCategoryId, '
+      'selectedDepartmentId=$_selectedDepartmentId, '
+      'selectedLocation=$_selectedLocation, '
+      'attachments=${_attachments.length}',
+    );
+
+    for (var i = 0; i < _attachments.length; i++) {
+      await _traceAttachment(
+        '[$traceId] submit attachment[$i]',
+        _attachments[i],
+      );
+    }
+
     setState(() => _isSubmitting = true);
+    _trace('[$traceId] isSubmitting=true');
 
     try {
       final (success, message) = await _reportService.createReport(
@@ -99,14 +142,19 @@ class _FormAspirasiScreenState extends State<FormAspirasiScreen> {
 
       if (!mounted) return;
       setState(() => _isSubmitting = false);
+      _trace('[$traceId] service result success=$success message="$message"');
 
       if (success) {
         _showSnackBar('Aspiration submitted successfully!');
         Navigator.of(context).maybePop();
       } else {
-        _showSnackBar(message.isNotEmpty ? message : 'Failed to submit', isError: true);
+        _showSnackBar(
+          message.isNotEmpty ? message : 'Failed to submit',
+          isError: true,
+        );
       }
     } catch (e) {
+      _trace('[$traceId] submit catch error=$e');
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       _showSnackBar('Submission error: $e', isError: true);
@@ -117,13 +165,16 @@ class _FormAspirasiScreenState extends State<FormAspirasiScreen> {
     if (isError) {
       debugPrint('FormAspirasi Error: $message');
     }
+    _trace('showSnackBar isError=$isError message="$message"');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           message,
           style: const TextStyle(fontFamily: 'PublicSans'),
         ),
-        backgroundColor: isError ? Colors.red.shade700 : const Color(0xFF1B4332),
+        backgroundColor: isError
+            ? Colors.red.shade700
+            : const Color(0xFF1B4332),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         action: isError
@@ -166,7 +217,10 @@ class _FormAspirasiScreenState extends State<FormAspirasiScreen> {
 
       if (permission == LocationPermission.deniedForever) {
         if (!mounted) return;
-        _showSnackBar('Location permissions are permanently denied.', isError: true);
+        _showSnackBar(
+          'Location permissions are permanently denied.',
+          isError: true,
+        );
         setState(() => _isFetchingGps = false);
         return;
       }
@@ -192,16 +246,30 @@ class _FormAspirasiScreenState extends State<FormAspirasiScreen> {
 
   Future<void> _handleTakePhoto() async {
     try {
+      _trace('takePhoto start');
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.camera,
-        imageQuality: 80,
-        maxWidth: 1920,
+        imageQuality: 70,
+        maxWidth: 1080,
         maxHeight: 1080,
       );
+      await _traceXFile('takePhoto picked', image);
       if (image != null && mounted) {
-        setState(() => _attachments.add(File(image.path)));
+        final file = File(image.path);
+        final error = await _validateAttachment(file);
+        if (!mounted) return;
+
+        if (error != null) {
+          _trace('takePhoto rejected error="$error"');
+          _showSnackBar(error, isError: true);
+          return;
+        }
+
+        setState(() => _attachments.add(file));
+        _trace('takePhoto accepted attachments=${_attachments.length}');
       }
     } catch (e) {
+      _trace('takePhoto error=$e');
       if (!mounted) return;
       _showSnackBar('Could not open camera.', isError: true);
     }
@@ -209,24 +277,161 @@ class _FormAspirasiScreenState extends State<FormAspirasiScreen> {
 
   Future<void> _handleUploadGallery() async {
     try {
+      _trace('uploadGallery start');
       final List<XFile> images = await _imagePicker.pickMultiImage(
-        imageQuality: 80,
-        maxWidth: 1920,
+        imageQuality: 70,
+        maxWidth: 1080,
         maxHeight: 1080,
       );
+      _trace('uploadGallery pickedCount=${images.length}');
       if (images.isNotEmpty && mounted) {
-        setState(() {
-          _attachments.addAll(images.map((img) => File(img.path)));
-        });
+        final acceptedFiles = <File>[];
+        var rejectedCount = 0;
+
+        for (var i = 0; i < images.length; i++) {
+          final image = images[i];
+          await _traceXFile('uploadGallery picked[$i]', image);
+          final file = File(image.path);
+          final error = await _validateAttachment(file);
+          if (error == null) {
+            acceptedFiles.add(file);
+            _trace('uploadGallery file[$i] accepted path="${file.path}"');
+          } else {
+            rejectedCount++;
+            _trace('uploadGallery file[$i] rejected error="$error"');
+          }
+        }
+
+        if (!mounted) return;
+
+        if (acceptedFiles.isNotEmpty) {
+          setState(() => _attachments.addAll(acceptedFiles));
+          _trace(
+            'uploadGallery accepted=${acceptedFiles.length}, '
+            'totalAttachments=${_attachments.length}',
+          );
+        }
+
+        if (rejectedCount > 0) {
+          _showSnackBar(
+            '$rejectedCount attachment(s) skipped. Use JPG/PNG up to 5MB.',
+            isError: true,
+          );
+        }
       }
     } catch (e) {
+      _trace('uploadGallery error=$e');
       if (!mounted) return;
       _showSnackBar('Could not open gallery.', isError: true);
     }
   }
 
   void _handleRemoveAttachment(int index) {
+    _trace('removeAttachment index=$index path="${_attachments[index].path}"');
     setState(() => _attachments.removeAt(index));
+    _trace('removeAttachment done totalAttachments=${_attachments.length}');
+  }
+
+  Future<String?> _validateAttachment(File file) async {
+    _trace('validateAttachment start path="${file.path}"');
+    final exists = await file.exists();
+    if (!exists) {
+      _trace('validateAttachment failed exists=false');
+      return 'Attachment file not found.';
+    }
+
+    final extension = _extensionForFile(file);
+    final sizeInBytes = await file.length();
+    _trace(
+      'validateAttachment metadata '
+      'fileName="${_fileNameForFile(file)}", '
+      'extension="$extension", '
+      'sizeBytes=$sizeInBytes, '
+      'size=${_formatBytes(sizeInBytes)}, '
+      'allowedExtensions=$_allowedAttachmentExtensions, '
+      'maxBytes=$_maxAttachmentBytes',
+    );
+
+    if (!_allowedAttachmentExtensions.contains(extension)) {
+      _trace('validateAttachment failed unsupportedExtension="$extension"');
+      return 'Only JPG and PNG attachments are supported.';
+    }
+
+    if (sizeInBytes > _maxAttachmentBytes) {
+      _trace('validateAttachment failed fileTooLarge sizeBytes=$sizeInBytes');
+      return 'Attachment must be 5MB or smaller.';
+    }
+
+    _trace('validateAttachment success');
+    return null;
+  }
+
+  Future<void> _traceXFile(String label, XFile? file) async {
+    if (file == null) {
+      _trace('$label null');
+      return;
+    }
+
+    int? size;
+    try {
+      size = await file.length();
+    } catch (e) {
+      _trace('$label lengthError=$e');
+    }
+
+    _trace(
+      '$label '
+      'name="${file.name}", '
+      'path="${file.path}", '
+      'mimeType=${file.mimeType}, '
+      'sizeBytes=$size, '
+      'size=${size == null ? '<unknown>' : _formatBytes(size)}',
+    );
+  }
+
+  Future<void> _traceAttachment(String label, File file) async {
+    final exists = await file.exists();
+    final size = exists ? await file.length() : null;
+    _trace(
+      '$label '
+      'path="${file.path}", '
+      'fileName="${_fileNameForFile(file)}", '
+      'extension="${_extensionForFile(file)}", '
+      'exists=$exists, '
+      'sizeBytes=$size, '
+      'size=${size == null ? '<missing>' : _formatBytes(size)}',
+    );
+  }
+
+  void _trace(String message) {
+    debugPrint('[$_traceTag] $message');
+  }
+
+  String _fileNameForFile(File file) {
+    return file.path.replaceAll('\\', '/').split('/').last;
+  }
+
+  String _formatBytes(int bytes) {
+    const kb = 1024;
+    const mb = kb * 1024;
+    if (bytes >= mb) {
+      return '${(bytes / mb).toStringAsFixed(2)}MB';
+    }
+    if (bytes >= kb) {
+      return '${(bytes / kb).toStringAsFixed(2)}KB';
+    }
+    return '${bytes}B';
+  }
+
+  String _extensionForFile(File file) {
+    final fileName = _fileNameForFile(file);
+    final dotIndex = fileName.lastIndexOf('.');
+
+    if (dotIndex == -1 || dotIndex == fileName.length - 1) {
+      return '';
+    }
+
+    return fileName.substring(dotIndex + 1).toLowerCase();
   }
 
   @override
