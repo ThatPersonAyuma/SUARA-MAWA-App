@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'user_controller.g.dart';
@@ -11,17 +10,19 @@ class User {
   final bool emailVerified;
   final String? phoneNumber;
   final bool phoneNumberVerified;
-  final UserRole userRole;
+  final UserRole? userRole;
+  final int? userRoleId;
 
   User({
     required this.id,
     required this.name,
     required this.email,
-    required this.photoProfileId,
+    this.photoProfileId,
     required this.emailVerified,
     this.phoneNumber,
     required this.phoneNumberVerified,
-    required this.userRole,
+    this.userRole,
+    this.userRoleId,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -29,11 +30,15 @@ class User {
       id: json['id'],
       name: json['name'],
       email: json['email'],
-      photoProfileId: json['photoProfileId'],
-      emailVerified: json['emailVerified'],
+      photoProfileId:
+          json['photoProfileId'],
+      emailVerified: json['emailVerified'] ?? false,
       phoneNumber: json['phoneNumber'],
-      phoneNumberVerified: json['phoneNumberVerified'],
-      userRole: UserRole.fromJson(json['userRole']),
+      phoneNumberVerified: json['phoneNumberVerified'] ?? false,
+      userRole: json['userRole'] != null
+          ? UserRole.fromJson(json['userRole'])
+          : null,
+      userRoleId: json['userRoleId'],
     );
   }
 
@@ -46,7 +51,8 @@ class User {
       'emailVerified': emailVerified,
       'phoneNumber': phoneNumber,
       'phoneNumberVerified': phoneNumberVerified,
-      'userRole': userRole.toJson(),
+      'userRole': userRole?.toJson(),
+      'userRoleId': userRoleId,
     };
   }
 
@@ -59,6 +65,7 @@ class User {
     String? phoneNumber,
     bool? phoneNumberVerified,
     UserRole? userRole,
+    int? userRoleId
   }) {
     return User(
       id: id ?? this.id,
@@ -68,6 +75,7 @@ class User {
       emailVerified: emailVerified ?? this.emailVerified,
       phoneNumberVerified: phoneNumberVerified ?? this.phoneNumberVerified,
       userRole: userRole ?? this.userRole,
+      userRoleId: userRoleId ?? this.userRoleId
     );
   }
 }
@@ -86,7 +94,9 @@ class UserRole {
   }
 
   UserRole copyWith({String? name}) {
-    return UserRole(name: name ?? this.name);
+    return UserRole(
+      name: name ?? this.name
+    );
   }
 }
 
@@ -175,7 +185,7 @@ class UserModel {
     this.mahasiswaDetail,
     this.penindakDetail,
     this.adminDetail,
-    this.token
+    this.token,
   });
 
   factory UserModel.initial() {

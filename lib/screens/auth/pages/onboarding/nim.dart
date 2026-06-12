@@ -141,7 +141,7 @@ class _NimFormState extends State<NimForm> {
                         controller: nimController,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Masukkan password';
+                            return 'Masukkan NIM';
                           }
                           return null;
                         },

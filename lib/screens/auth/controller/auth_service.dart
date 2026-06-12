@@ -1,77 +1,14 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:suara_mawa/screens/aspirasi/aspirasi_main_screen.dart';
 import 'package:suara_mawa/screens/auth/index.dart';
 import 'package:suara_mawa/screens/penindak/penindak_main_screen.dart';
-import 'package:suara_mawa/screens/aspirasi/aspirasi_main_screen.dart';
-
-class User {
-  final String id;
-  final String name;
-  final String email;
-  final String? photoProfileId;
-  final bool emailVerified;
-  final String? phoneNumber;
-  final bool phoneNumberVerified;
-  final UserRole? userRole;
-  final int? userRoleId;
-
-  User({
-    required this.id,
-    required this.name,
-    required this.email,
-    this.photoProfileId,
-    required this.emailVerified,
-    this.phoneNumber,
-    required this.phoneNumberVerified,
-    this.userRole,
-    this.userRoleId,
-  });
-
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'],
-      name: json['name'],
-      email: json['email'],
-      photoProfileId: json['photoProfileId']?.toString() ?? json['image']?.toString(),
-      emailVerified: json['emailVerified'] ?? false,
-      phoneNumber: json['phoneNumber'],
-      phoneNumberVerified: json['phoneNumberVerified'] ?? false,
-      userRole: json['userRole'] != null ? UserRole.fromJson(json['userRole']) : null,
-      userRoleId: json['userRoleId'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'email': email,
-      'photoProfileId': photoProfileId,
-      'emailVerified': emailVerified,
-      'phoneNumber': phoneNumber,
-      'phoneNumberVerified': phoneNumberVerified,
-      'userRole': userRole?.toJson(),
-      'userRoleId': userRoleId,
-    };
-  }
-}
-
-class UserRole {
-  final String name;
-
-  UserRole({required this.name});
-
-  factory UserRole.fromJson(Map<String, dynamic> json) {
-    return UserRole(name: json['name']);
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'name': name};
-  }
-}
+import 'package:suara_mawa/utils/local_notif.dart';
+import 'package:suara_mawa/utils/user_controller.dart';
 
 class AuthService {
   static const String baseUrl = String.fromEnvironment(
@@ -106,15 +43,23 @@ class AuthService {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       final user = User.fromJson(response.data);
-      ref.read(userControllerProvider.notifier).update(
-        UserModel(
-          user: user,
-          token: token,
-          mahasiswaDetail: user.userRole.name == "MAHASISWA" ? MahasiswaDetail.fromJson(response.data['mahasiswaDetail']) : null, 
-          penindakDetail: user.userRole.name == "PENINDAK" ? PenindakDetail.fromJson(response.data['penindakDetail']) : null,
-          adminDetail: user.userRole.name == "ADMIN" ? AdminDetail.fromJson(response.data['adminDetail']) : null,
-        )
-      );
+      ref
+          .read(userControllerProvider.notifier)
+          .update(
+            UserModel(
+              user: user,
+              token: token,
+              mahasiswaDetail: user.userRole?.name == "MAHASISWA"
+                  ? MahasiswaDetail.fromJson(response.data['mahasiswaDetail'])
+                  : null,
+              penindakDetail: user.userRole?.name == "PENINDAK"
+                  ? PenindakDetail.fromJson(response.data['penindakDetail'])
+                  : null,
+              adminDetail: user.userRole?.name == "ADMIN"
+                  ? AdminDetail.fromJson(response.data['adminDetail'])
+                  : null,
+            ),
+          );
       print("Success, : ${ref.read(userControllerProvider).user?.name}");
       return (true, 'success');
     } on DioException catch (e) {
@@ -352,6 +297,37 @@ class AuthService {
     }
   }
 
+  Future<bool> sendChangePassword(String currentPw, String newPw) async {
+    try {
+      final token = await this.getToken();
+      final response = await _dio.post(
+        '/api/auth/phone-number/verify',
+        data: {
+          'newPassword': newPw,
+          'currentPassword': currentPw,
+          "revokeOtherSessions": true,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.data['token'] != null) {
+        await _storage.write(key: "auth_token", value: response.data['token']);
+      }
+      return true;
+    } on DioException catch (e) {
+      // Sttaus 400 bad request
+      // {
+      //     "message": "Invalid password",
+      //     "code": "INVALID_PASSWORD"
+      // }
+      if (e.response?.data['code']);
+      print(e.toString());
+      return false;
+    } catch (e) {
+      print(e.toString());
+      return false;
+    }
+  }
+
   Future<Map<String, dynamic>?> getMahasiswaDetail() async {
     try {
       final token = await this.getToken();
@@ -367,6 +343,56 @@ class AuthService {
     } on DioException catch (e) {
       print(e.toString());
       return null;
+    }
+  }
+
+  Future<bool> updatePassword(
+    String newPassoword,
+    String currentPassword,
+  ) async {
+    try {
+      final token = await this.getToken();
+      final response = await _dio.get(
+        '/api/auth/change-password',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        data: {"newPassword": newPassoword, "currentPassword": currentPassword},
+      );
+      return true;
+    } on DioException catch (e) {
+      print(e.toString());
+      return false;
+    } catch (e) {
+      print(e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> sendFCMToken() async {
+    try {
+      final token = await this.getToken();
+      final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+      // 1. Request izin (khusus Android 13+)
+      NotificationSettings settings = await _firebaseMessaging
+          .requestPermission(alert: true, badge: true, sound: true);
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        print('User mengizinkan notifikasi');
+
+        // 2. Ambil FCM Token (Kirim token ini ke server Anda untuk target spesifik)
+        String? FCMToken = await _firebaseMessaging.getToken();
+        print("FCM Token Anda: $FCMToken");
+        if (FCMToken == null) return false;
+        final response = await _dio.post(
+          '/notification/register',
+          data: {'token': FCMToken},
+          options: Options(headers: {'Authorization': 'Bearer $token'}),
+        );
+        // 3. Handle notifikasi saat aplikasi aktif (Foreground)
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -429,7 +455,8 @@ class AuthService {
       case "SUCCESS":
         final userRoleIdStr = await _storage.read(key: "userRoleId");
         int? userRoleId = int.tryParse(userRoleIdStr ?? '');
-
+        await sendFCMToken();
+        if (!context.mounted) return;
         if (userRoleId == null) {
           final user = await getUser();
           userRoleId = user?.userRoleId;

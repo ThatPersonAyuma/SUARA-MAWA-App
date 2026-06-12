@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:suara_mawa/screens/auth/controller/auth_service.dart';
 import 'package:suara_mawa/screens/auth/controller/onboarding.dart';
 import 'package:suara_mawa/screens/auth/index.dart';
@@ -21,6 +22,7 @@ class _PhoneNumberState extends State<PhoneNumber> {
   final textStyle = const TextStyle(color: Colors.black, fontSize: 16);
   final errorStyle = const TextStyle(color: Colors.red, fontSize: 16);
   bool _isFilled = false;
+  final idPhoneRegex = RegExp(r'^(\+62|62|0)8[1-9][0-9]{7,11}$');
 
   @override
   void initState() {
@@ -101,6 +103,14 @@ class _PhoneNumberState extends State<PhoneNumber> {
                       const SizedBox(height: 20),
                       TextFormField(
                         style: textStyle,
+                        inputFormatters: [
+                          TextInputFormatter.withFunction((oldValue, newValue) {
+                            if (RegExp(r'^\+?[0-9]*$').hasMatch(newValue.text)) {
+                              return newValue;
+                            }
+                            return oldValue;
+                          }),
+                        ],
                         decoration: InputDecoration(
                           hintStyle: textStyle,
                           hintText: 'Nomor Telepon',
@@ -117,33 +127,37 @@ class _PhoneNumberState extends State<PhoneNumber> {
                         controller: nomorHPController,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Masukkan email';
+                            return 'Masukkan nomor telepon';
+                          }
+                          if (!idPhoneRegex.hasMatch(value)) {
+                            return 'Cek kembali nomor telepon';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 20),
-                      if (_isFilled) ElevatedButton(
-                        onPressed: ()async {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const PhonePage(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          minimumSize: const Size(double.infinity, 44),
-                        ),
-                        child: const Text(
-                                "Selanjutnya",
-                                style: TextStyle(
-                                  color: AppColors.white,
-                                  fontSize: 16,
-                                ),
+                      if (_isFilled)
+                        ElevatedButton(
+                          onPressed: () async {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const PhonePage(),
                               ),
-                      ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            minimumSize: const Size(double.infinity, 44),
+                          ),
+                          child: const Text(
+                            "Selanjutnya",
+                            style: TextStyle(
+                              color: AppColors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
                       ElevatedButton(
                         onPressed: () async {
                           setState(() {
@@ -170,13 +184,15 @@ class _PhoneNumberState extends State<PhoneNumber> {
                           backgroundColor: AppColors.primary,
                           minimumSize: const Size(double.infinity, 44),
                         ),
-                        child: _isFilled ? const Text(
+                        child: _isFilled
+                            ? const Text(
                                 "Update Nomor Telepon",
                                 style: TextStyle(
                                   color: AppColors.white,
                                   fontSize: 16,
                                 ),
-                              ) : const Text(
+                              )
+                            : const Text(
                                 "Tambahkan Nomor Telepon",
                                 style: TextStyle(
                                   color: AppColors.white,
