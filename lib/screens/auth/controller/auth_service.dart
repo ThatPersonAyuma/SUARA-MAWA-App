@@ -64,7 +64,7 @@ class AuthService {
       return (true, 'success');
     } on DioException catch (e) {
       print(e.response.toString());
-      return (false, e.response?.data['code'].toString() ?? '');
+      return (false, _getErrorCode(e));
     }
   }
 
@@ -111,7 +111,7 @@ class AuthService {
 
       return (true, token.toString());
     } on DioException catch (e) {
-      return (false, e.response?.data['code'].toString());
+      return (false, _getErrorCode(e));
     } catch (e) {
       throw Exception("Exception" + e.toString());
     }
@@ -125,6 +125,7 @@ class AuthService {
       );
       print("Data: ${response.data}"); // Dio automatically decodes JSON
       final data = response.data;
+      print(data);
 
       final token = data["token"];
       final userRoleId = data["user"]?["userRoleId"];
@@ -136,7 +137,7 @@ class AuthService {
       }
       return (true, token.toString());
     } on DioException catch (e) {
-      return (false, e.response?.data['code'].toString());
+      return (false, _getErrorCode(e));
     }
   }
 
@@ -159,7 +160,7 @@ class AuthService {
       }
       return (isSuccess, isSuccess ? "success" : data["message"].toString());
     } on DioException catch (e) {
-      return (false, e.response?.data['code'].toString());
+      return (false, _getErrorCode(e));
     }
   }
 
@@ -176,7 +177,7 @@ class AuthService {
       final isSuccess = data["message"] == 'Success';
       return (isSuccess, isSuccess ? "Success" : data["message"].toString());
     } on DioException catch (e) {
-      return (false, e.response?.data['code'].toString());
+      return (false, _getErrorCode(e));
     }
   }
 
@@ -193,7 +194,7 @@ class AuthService {
       final isSuccess = data["message"] == 'success';
       return (isSuccess, isSuccess ? "success" : data["message"].toString());
     } on DioException catch (e) {
-      return (false, e.response?.data['code'].toString());
+      return (false, _getErrorCode(e));
     }
   }
 
@@ -233,7 +234,7 @@ class AuthService {
       final isSuccess = data["message"] != null;
       return (isSuccess, isSuccess ? "success" : data["message"].toString());
     } on DioException catch (e) {
-      return (false, e.response?.data['code'].toString());
+      return (false, _getErrorCode(e));
     }
   }
 
@@ -249,7 +250,7 @@ class AuthService {
       final isSuccess = data["message"] == 'code sent';
       return (isSuccess, isSuccess ? "success" : data["message"].toString());
     } on DioException catch (e) {
-      return (false, e.response?.data['code'].toString());
+      return (false, _getErrorCode(e));
     }
   }
 
@@ -271,7 +272,7 @@ class AuthService {
       final isSuccess = data["message"] != 'code sent';
       return (isSuccess, isSuccess ? "success" : data["message"].toString());
     } on DioException catch (e) {
-      return (false, e.response?.data['code'].toString());
+      return (false, _getErrorCode(e));
     }
   }
 
@@ -480,7 +481,23 @@ class AuthService {
         }
         break;
       default:
+        if (code.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Error: $code"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         break;
     }
+  }
+
+  String _getErrorCode(DioException e) {
+    final data = e.response?.data;
+    if (data is Map) {
+      return data['code']?.toString() ?? '';
+    }
+    return e.response?.statusCode?.toString() ?? e.message ?? '';
   }
 }

@@ -8,6 +8,9 @@ import 'package:suara_mawa/screens/penindak/services/report_service.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:video_compress/video_compress.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final int reportId;
@@ -92,25 +95,25 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // ──────────────── EVIDENCE ACTIONS ────────────────
 
-  void _onEvidenceTap(Map<String, dynamic> evidence) {
+  void _onEvidenceTap(Map<String, dynamic> evidence, {bool isFeedback = false}) {
     final fileInfo = evidence['file'] as Map<String, dynamic>;
     final filetype = fileInfo['filetype'] as String;
     final evidenceId = evidence['id'] as int;
 
     switch (filetype) {
       case 'image':
-        _showImagePopup(evidenceId);
+        _showImagePopup(evidenceId, isFeedback: isFeedback);
         break;
       case 'document':
-        _previewDocument(evidenceId);
+        _previewDocument(evidenceId, isFeedback: isFeedback);
         break;
       case 'video':
-        _showVideoPopup(evidenceId);
+        _showVideoPopup(evidenceId, isFeedback: isFeedback);
         break;
     }
   }
 
-  void _showImagePopup(int evidenceId) {
+  void _showImagePopup(int evidenceId, {bool isFeedback = false}) {
     showDialog(
       context: context,
       barrierColor: Colors.black87,
@@ -121,7 +124,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           alignment: Alignment.center,
           children: [
             FutureBuilder<Uint8List?>(
-              future: _service.fetchEvidencePreviewBytes(evidenceId),
+              future: isFeedback 
+                  ? _service.fetchFeedbackAttachmentPreviewBytes(evidenceId) 
+                  : _service.fetchEvidencePreviewBytes(evidenceId),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SizedBox(
@@ -158,23 +163,26 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  void _previewDocument(int evidenceId) {
+  void _previewDocument(int evidenceId, {bool isFeedback = false}) {
     showDialog(
       context: context,
       barrierColor: Colors.black87,
       builder: (ctx) => _PdfViewerDialog(
         evidenceId: evidenceId,
         service: _service,
+        isFeedback: isFeedback,
       ),
     );
   }
 
-  void _showVideoPopup(int evidenceId) {
+  void _showVideoPopup(int evidenceId, {bool isFeedback = false}) {
     showDialog(
       context: context,
       barrierColor: Colors.black87,
       builder: (ctx) => _VideoPlayerDialog(
-        videoUrl: _service.getEvidencePreviewUrl(evidenceId),
+        videoUrl: isFeedback 
+            ? _service.getFeedbackAttachmentPreviewUrl(evidenceId) 
+            : _service.getEvidencePreviewUrl(evidenceId),
         evidenceId: evidenceId,
         service: _service,
       ),
@@ -326,6 +334,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   const SizedBox(height: 10),
                   _buildEvidenceList(
                     (feedback['feedbackAttachments'] as List).cast<Map<String, dynamic>>(),
+                    isFeedback: true,
                   ),
                 ],
               ] else ...[
@@ -364,8 +373,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
       body: _buildBody(),
-      bottomSheet: _data != null ? _buildBottomAction() : null,
+      bottomSheet: _shouldShowBottomAction() ? _buildBottomAction() : null,
     );
+  }
+
+  bool _shouldShowBottomAction() {
+    if (_data == null) return false;
+    final statusList = (_data!['reportStatus'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    if (statusList.isEmpty) return true;
+    
+    final latestStatus = statusList.last['status'] as String?;
+    return latestStatus != 'resolved' && latestStatus != 'completed';
   }
 
   Widget _buildBody() {
@@ -576,7 +594,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  Widget _buildEvidenceList(List<Map<String, dynamic>> evidences) {
+  Widget _buildEvidenceList(List<Map<String, dynamic>> evidences, {bool isFeedback = false}) {
     return SizedBox(
       height: 110,
       child: ListView.builder(
@@ -589,7 +607,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           final evidenceId = evidence['id'] as int;
 
           return GestureDetector(
-            onTap: () => _onEvidenceTap(evidence),
+            onTap: () => _onEvidenceTap(evidence, isFeedback: isFeedback),
             child: Container(
               margin: const EdgeInsets.only(right: 12),
               width: 130,
@@ -600,7 +618,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: _buildEvidenceCard(filetype, evidenceId, fileInfo),
+                child: _buildEvidenceCard(filetype, evidenceId, fileInfo, isFeedback: isFeedback),
               ),
             ),
           );
@@ -609,14 +627,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  Widget _buildEvidenceCard(String filetype, int evidenceId, Map<String, dynamic> fileInfo) {
+  Widget _buildEvidenceCard(String filetype, int evidenceId, Map<String, dynamic> fileInfo, {bool isFeedback = false}) {
     switch (filetype) {
       case 'image':
         return Stack(
           fit: StackFit.expand,
           children: [
             FutureBuilder<Uint8List?>(
-              future: _service.fetchEvidencePreviewBytes(evidenceId),
+              future: isFeedback 
+                  ? _service.fetchFeedbackAttachmentPreviewBytes(evidenceId) 
+                  : _service.fetchEvidencePreviewBytes(evidenceId),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Container(
@@ -936,7 +956,18 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           children: [
             Expanded(
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => _FeedbackDialog(
+                      reportId: widget.reportId,
+                      service: _service,
+                      onSuccess: () {
+                        _loadDetail();
+                      },
+                    ),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF00005C),
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1080,15 +1111,16 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
   }
 }
 
-// ──────────────── PDF VIEWER DIALOG ────────────────
 
 class _PdfViewerDialog extends StatefulWidget {
   final int evidenceId;
   final ReportService service;
+  final bool isFeedback;
 
   const _PdfViewerDialog({
     required this.evidenceId,
     required this.service,
+    this.isFeedback = false,
   });
 
   @override
@@ -1108,11 +1140,14 @@ class _PdfViewerDialogState extends State<_PdfViewerDialog> {
 
   Future<void> _loadPdf() async {
     try {
-      final bytes = await widget.service.fetchEvidencePreviewBytes(widget.evidenceId);
+      final bytes = await (widget.isFeedback
+          ? widget.service.fetchFeedbackAttachmentPreviewBytes(widget.evidenceId)
+          : widget.service.fetchEvidencePreviewBytes(widget.evidenceId));
       if (bytes == null || bytes.isEmpty) throw Exception('Empty response');
 
       final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/preview_${widget.evidenceId}.pdf');
+      final prefix = widget.isFeedback ? 'feedback' : 'evidence';
+      final file = File('${dir.path}/${prefix}_${widget.evidenceId}.pdf');
       await file.writeAsBytes(bytes);
 
       if (mounted) {
@@ -1202,6 +1237,433 @@ class _PdfViewerDialogState extends State<_PdfViewerDialog> {
                       ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ──────────────── FEEDBACK DIALOG ────────────────
+
+class _FeedbackDialog extends StatefulWidget {
+  final int reportId;
+  final ReportService service;
+  final VoidCallback onSuccess;
+
+  const _FeedbackDialog({
+    required this.reportId,
+    required this.service,
+    required this.onSuccess,
+  });
+
+  @override
+  State<_FeedbackDialog> createState() => _FeedbackDialogState();
+}
+
+class _FeedbackDialogState extends State<_FeedbackDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _descriptionController = TextEditingController();
+  
+  String _selectedStatus = 'in_progress';
+  List<File> _selectedFiles = [];
+  List<String> _fileNames = [];
+  bool _isLoading = false;
+
+  final List<Map<String, String>> _statusOptions = [
+    {'value': 'in_progress', 'label': 'Diproses'},
+    {'value': 'revision', 'label': 'Revisi'},
+    {'value': 'resolved', 'label': 'Selesai'},
+  ];
+
+  Future<void> _pickFiles() async {
+    try {
+      FilePickerResult? result = await FilePicker.pickFiles(
+        allowMultiple: true,
+      );
+
+      if (result != null) {
+        setState(() {
+          for (var path in result.paths) {
+            if (path != null) {
+              _selectedFiles.add(File(path));
+              _fileNames.add(path.split('/').last);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memilih file: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showCameraOptions() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+                title: const Text('Ambil Foto'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _captureMedia(isVideo: false);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.videocam, color: AppColors.primary),
+                title: const Text('Ambil Video'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _captureMedia(isVideo: true);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _captureMedia({required bool isVideo}) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+
+      if (isVideo) {
+        final XFile? pickedFile = await picker.pickVideo(
+          source: ImageSource.camera,
+          maxDuration: const Duration(minutes: 5),
+        );
+
+        if (pickedFile != null) {
+          if (mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return const AlertDialog(
+                  content: Row(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(width: 16),
+                      Text("Mengkompresi video..."),
+                    ],
+                  ),
+                );
+              },
+            );
+          }
+
+          final MediaInfo? mediaInfo = await VideoCompress.compressVideo(
+            pickedFile.path,
+            quality: VideoQuality.MediumQuality,
+            deleteOrigin: true,
+            includeAudio: true,
+          );
+
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+
+          if (mediaInfo != null && mediaInfo.file != null) {
+            setState(() {
+              _selectedFiles.add(mediaInfo.file!);
+              _fileNames.add(pickedFile.name);
+            });
+          }
+        }
+      } else {
+        final XFile? pickedFile = await picker.pickImage(
+          source: ImageSource.camera,
+          imageQuality: 50,
+          maxWidth: 1080,
+          maxHeight: 1080,
+        );
+
+        if (pickedFile != null) {
+          setState(() {
+            _selectedFiles.add(File(pickedFile.path));
+            _fileNames.add(pickedFile.name);
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengambil atau mengkompresi media: $e')),
+        );
+      }
+    }
+  }
+
+  void _removeFile(int index) {
+    setState(() {
+      _selectedFiles.removeAt(index);
+      _fileNames.removeAt(index);
+    });
+  }
+
+  Future<void> _submitFeedback() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await widget.service.createFeedback(
+        reportId: widget.reportId,
+        status: _selectedStatus,
+        description: _descriptionController.text,
+        files: _selectedFiles.isEmpty ? null : _selectedFiles,
+        names: _fileNames.isEmpty ? null : _fileNames,
+      );
+
+      if (mounted) {
+        if (result['status'] == 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Berhasil memberikan feedback')),
+          );
+          Navigator.pop(context);
+          widget.onSuccess();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Gagal memberikan feedback')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Tindak Lanjut',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                
+                // Status Dropdown
+                const Text(
+                  'Status',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedStatus,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  items: _statusOptions.map((option) {
+                    return DropdownMenuItem<String>(
+                      value: option['value'],
+                      child: Text(option['label']!),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedStatus = value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Description
+                const Text(
+                  'Deskripsi',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _descriptionController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan catatan tindak lanjut...',
+                    contentPadding: const EdgeInsets.all(16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Deskripsi tidak boleh kosong';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                const Text(
+                  'Lampiran (Opsional)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _pickFiles,
+                        icon: const Icon(Icons.attach_file, size: 18),
+                        label: const Text('Pilih File'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _showCameraOptions,
+                        icon: const Icon(Icons.camera_alt, size: 18),
+                        label: const Text('Kamera'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                if (_selectedFiles.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _selectedFiles.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.insert_drive_file, size: 20, color: AppColors.primary),
+                          title: Text(
+                            _fileNames[index],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                            onPressed: () => _removeFile(index),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                
+                const SizedBox(height: 24),
+                
+                // Submit Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _submitFeedback,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            'Tindak',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
