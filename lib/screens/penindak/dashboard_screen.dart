@@ -223,8 +223,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             FlutterMap(
               options: const MapOptions(
-                initialCenter: LatLng(-6.186486, 106.829140),
-                initialZoom: 13.0,
+                initialCenter: LatLng(-8.165049, 113.716424),
+                initialZoom: 15.0,
                 maxZoom: 18.0,
                 minZoom: 3.0,
               ),
