@@ -69,7 +69,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (detail != null) {
           final lat = (detail['locationLat'] as num?)?.toDouble();
           final lng = (detail['locationLong'] as num?)?.toDouble();
-          return report.copyWith(locationLat: lat, locationLong: lng);
+          final loc = detail['location'] as String?;
+          return report.copyWith(locationLat: lat, locationLong: lng, location: loc);
         }
         return report;
       }));
@@ -162,6 +163,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text("Kategori: ${report.categoriesName}", style: const TextStyle(fontSize: 14)),
+            const SizedBox(height: 4),
+            Text("Lokasi: ${report.location ?? '-'}", style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 8),
             Text(report.description, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)),
           ],

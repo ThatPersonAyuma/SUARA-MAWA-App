@@ -11,6 +11,7 @@ class Report {
   final DateTime createdAt;
   final double? locationLat;
   final double? locationLong;
+  final String? location;
 
   Report({
     required this.id,
@@ -25,6 +26,7 @@ class Report {
     required this.createdAt,
     this.locationLat,
     this.locationLong,
+    this.location,
   });
 
   factory Report.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,7 @@ class Report {
       createdAt: DateTime.parse(json['createdAt']),
       locationLat: (json['locationLat'] as num?)?.toDouble(),
       locationLong: (json['locationLong'] as num?)?.toDouble(),
+      location: json['location'] as String?,
     );
   }
 
@@ -57,6 +60,7 @@ class Report {
     DateTime? createdAt,
     double? locationLat,
     double? locationLong,
+    String? location,
   }) {
     return Report(
       id: id ?? this.id,
@@ -71,6 +75,7 @@ class Report {
       createdAt: createdAt ?? this.createdAt,
       locationLat: locationLat ?? this.locationLat,
       locationLong: locationLong ?? this.locationLong,
+      location: location ?? this.location,
     );
   }
 }
