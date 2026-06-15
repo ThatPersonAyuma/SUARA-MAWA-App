@@ -89,21 +89,26 @@ class _ActivityCardState extends State<ActivityCard>
         color: widget.statusBgColor,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(widget.statusIcon, color: widget.statusColor, size: 12),
-          const SizedBox(width: 4),
-          Text(
-            widget.statusLabel,
-            style: TextStyle(
-              fontFamily: 'PublicSans',
-              fontWeight: FontWeight.w500,
-              fontSize: 11,
-              color: widget.statusColor,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(widget.statusIcon, color: widget.statusColor, size: 12),
+            const SizedBox(width: 4),
+            Text(
+              widget.statusLabel,
+              style: TextStyle(
+                fontFamily: 'PublicSans',
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
+                color: widget.statusColor,
+                decoration: TextDecoration.none,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 

@@ -17,21 +17,26 @@ class StatusBadge extends StatelessWidget {
         color: status.badgeBackgroundColor,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(status.badgeIcon, size: 12, color: status.badgeTextColor),
-          const SizedBox(width: 5),
-          Text(
-            status.label,
-            style: TextStyle(
-              fontFamily: 'PublicSans',
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-              color: status.badgeTextColor,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(status.badgeIcon, size: 12, color: status.badgeTextColor),
+            const SizedBox(width: 5),
+            Text(
+              status.label,
+              style: TextStyle(
+                fontFamily: 'PublicSans',
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: status.badgeTextColor,
+                decoration: TextDecoration.none,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
