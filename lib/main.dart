@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:suara_mawa/screens/admin/admin_dashboard_screen.dart';
-
+import 'utils/server_down.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +15,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'PublicSans'
       ),
-      home: DashboardAdmin()
+      home: ServerDownPage(onRetry: () {
+      }),
     );
   }
 }
