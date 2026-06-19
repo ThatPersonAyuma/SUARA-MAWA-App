@@ -210,13 +210,17 @@ class ReportStatusItem {
 class ReportStatusAuthor {
   final String id;
   final String name;
+  final String? urlFotoProfil;
 
-  const ReportStatusAuthor({required this.id, required this.name});
+  const ReportStatusAuthor({required this.id, required this.name, this.urlFotoProfil});
 
   factory ReportStatusAuthor.fromJson(Map<String, dynamic> json) {
     return ReportStatusAuthor(
       id: json['id'].toString(),
       name: json['name'] as String? ?? '',
+      urlFotoProfil: json['url_foto_profil'] as String? ?? (json['photoProfileId'] != null
+          ? '/users/${Uri.encodeComponent(json['name'] as String)}/profile/photo'
+          : null),
     );
   }
 }
