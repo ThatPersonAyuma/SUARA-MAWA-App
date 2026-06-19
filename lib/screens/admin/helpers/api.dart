@@ -58,21 +58,55 @@ class AdminAPIHelper {
   Future<UserPageData?> getUsers({
     String? keyword,
     int? userRoleId,
-    String page = "1",
+    int? page,
   }) async {
+    if (page == null || page < 1) page = 1;
     final token = await this.getToken();
     String url = '/user/get-all?page=$page';
     if (userRoleId != null) url += '&userRoleId=$userRoleId';
     if (keyword != null) url += '&keyword=$keyword';
+    print(url);
     final result = await _dio.get(
       url,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     print(result.data);
-    if (result.data != null) {
+    if (result.data != null && result.data != "") {
       return UserPageData.fromJson(result.data);
     } else {
       return null;
+    }
+  }
+
+  Future<(bool, String)> addPenindak({
+    required String name,
+    required String email,
+    required String phoneNumber,
+    required String password,
+    required String nik,
+    required int departmentId,
+  }) async {
+    try {
+      final token = await this.getToken();
+      final response = await _dio.post(
+        "/user/create/admin",
+        data: {
+          "name": name,
+          "email": email,
+          "phoneNumber": phoneNumber,
+          "password": password,
+          "nik": nik,
+          "departmentId": departmentId,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      if (response.data['status'] == 'success') {
+        return (true, response.data['status'].toString());
+      }
+      return (false, "Ada error pada response");
+    } catch (e) {
+      print(e);
+      return (false, e.toString());
     }
   }
 }
@@ -95,18 +129,21 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
-    final nik = json['mahasiswaDeatils']!=null ? (json['penindakDetails'] != null 
-        ? json['penindakDetails']["nik"]
-        : json['adminDetails']['nik']) : '';
+    final nik = json['mahasiswaDeatils'] != null
+        ? (json['penindakDetails'] != null
+              ? json['penindakDetails']["nik"]
+              : json['adminDetails']['nik'])
+        : '';
     return User(
       id: json['id'],
       name: json['name'],
       email: json['email'],
       role: json['userRole']['name'],
-      lastLogin: json['lastLogin']??"Belum Pernah Login",
-      departemenId: json['penindakDetails']?["department"]["id"].toString() ?? '',
+      lastLogin: json['lastLogin'] ?? "Belum Pernah Login",
+      departemenId:
+          json['department']?["id"].toString() ?? '',
       nik: nik,
-      noTelp: json['phoneNumber']??'Belum Menambahkan Nomor Telepon',
+      noTelp: json['phoneNumber'] ?? 'Belum Menambahkan Nomor Telepon',
       nim: json['mahasiswaDetails']?['nim'] ?? '',
     );
   }

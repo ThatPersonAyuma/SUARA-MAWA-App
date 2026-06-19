@@ -54,13 +54,6 @@ class ProfileOptions extends ConsumerWidget {
         },
       ),
       ProfileMenuItem(
-        title: "Pengaturan Notifikasi",
-        icon: Icons.notifications_active,
-        iconColor: AppColors.primary,
-        backgroundColor: const Color(0xFF5171FE),
-        onTap: () {},
-      ),
-      ProfileMenuItem(
         title: "Bantuan",
         icon: Icons.question_mark,
         iconColor: const Color(0xFF09A886),
@@ -205,7 +198,6 @@ class ProfilePreview extends ConsumerWidget {
     final name = ref.watch(
       userControllerProvider.select((userModel) => userModel.user?.name),
     );
-    print("UseModel: ${ref.watch(userControllerProvider).user?.name}");
     final userRole = ref.watch(
       userControllerProvider.select(
         (userModel) => userModel.user?.userRole?.name,
@@ -241,7 +233,7 @@ class ProfilePreview extends ConsumerWidget {
               CircleAvatar(
                 radius: 50,
                 backgroundImage: NetworkImage(
-                  "${const String.fromEnvironment('SERVER_BASE_URL', defaultValue: '')}/users/${ref.watch(userControllerProvider.select((um) => um.user?.name))}/profile/photo",
+                  "${const String.fromEnvironment('SERVER_BASE_URL', defaultValue: '')}/users/${ref.watch(userControllerProvider.select((um) => um.user?.name))}/profile/photo?dump=${ref.watch(userControllerProvider.select((um) => um.counter))}",
                   headers: {
                     'Authorization':
                         "Bearer ${ref.watch(userControllerProvider.select((um) => um.token))}",

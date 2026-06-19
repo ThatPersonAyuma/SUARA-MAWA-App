@@ -144,9 +144,22 @@ class _UpdateProfilePageState extends ConsumerState<UpdateProfilePage> {
       );
       if (selectedImage != null) {
         ref.read(userControllerProvider.notifier).updatePhotoProfile();
+        setState((){
+          selectedImage = null;
+        });
       }
       ref.read(userControllerProvider.notifier).updateMahasiswaDetail(
-        
+        nim
+      );
+      ref.read(userControllerProvider.notifier).updateAdminDetail(
+        nik
+      );
+      ref.read(userControllerProvider.notifier).updatePenindakDetail(
+        nik
+      );
+      ref.read(userControllerProvider.notifier).updateUserProfile(
+        name,
+        nomorHP
       );
       if (nomorHPController.text != userModel.user?.phoneNumber && mounted) {
         Navigator.pushAndRemoveUntil(

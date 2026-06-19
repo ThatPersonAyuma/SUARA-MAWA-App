@@ -96,7 +96,7 @@ class DashboardAdmin extends StatelessWidget {
     return const SharedMainScreen(
       screens: [
         _AdminDashboardBody(),
-        AdminDaftarAspirasiScreen(),
+        // AdminDaftarAspirasiScreen(),
         PublicAspirationsScreen(),
         AdminAccountManagement(),
         ProfileScreen(),
@@ -107,11 +107,11 @@ class DashboardAdmin extends StatelessWidget {
           selectedIcon: Icon(Icons.home),
           label: 'Home',
         ),
-        NavigationDestination(
-          icon: Icon(Icons.list_alt_outlined),
-          selectedIcon: Icon(Icons.list_alt),
-          label: 'Daftar Aspirasi',
-        ),
+        // NavigationDestination(
+        //   icon: Icon(Icons.list_alt_outlined),
+        //   selectedIcon: Icon(Icons.list_alt),
+        //   label: 'Daftar Aspirasi',
+        // ),
         NavigationDestination(
           icon: Icon(Icons.public_outlined),
           selectedIcon: Icon(Icons.public),

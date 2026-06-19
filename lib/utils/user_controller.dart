@@ -197,6 +197,7 @@ class UserModel {
     PenindakDetail? penindakDetail,
     AdminDetail? adminDetail,
     int? counter,
+    String? token,
   }) {
     return UserModel(
       user: user ?? this.user,
@@ -204,6 +205,7 @@ class UserModel {
       penindakDetail: penindakDetail ?? this.penindakDetail,
       adminDetail: adminDetail ?? this.adminDetail,
       counter: counter ?? this.counter,
+      token: token ?? this.token,
     );
   }
 }
@@ -215,20 +217,31 @@ class UserController extends _$UserController {
     return UserModel.initial(); // initial state
   }
 
-  void update(UserModel model) {
-    print(state);
-    print(model);
+  void updateAttribute({
+    User? user,
+    MahasiswaDetail? mahasiswaDetail,
+    PenindakDetail? penindakDetail,
+    AdminDetail? adminDetail,
+    int? counter,
+    String? token,
+  }) {
+    state = state.copyWith(
+      user: user,
+      mahasiswaDetail: mahasiswaDetail,
+      penindakDetail: penindakDetail,
+      adminDetail: adminDetail,
+      counter: counter,
+      token: token,
+    );
+  }
 
+  void update(UserModel model) {
     state = model;
   }
 
-  void updateUserProfile(
-    String? name,
-  ) {
+  void updateUserProfile(String? name, String? nomorHp) {
     state = state.copyWith(
-      user: state.user?.copyWith(
-        name: name,
-      ),
+      user: state.user?.copyWith(name: name, phoneNumber: nomorHp),
     );
   }
 
@@ -236,21 +249,21 @@ class UserController extends _$UserController {
     state = state.copyWith(counter: state.counter + 1);
   }
 
-  void updateMahasiswaDetail(String nim) {
+  void updateMahasiswaDetail(String? nim) {
     final data = state.mahasiswaDetail?.copyWith(nim: nim);
     if (data != null) {
       state = state.copyWith(mahasiswaDetail: data);
     }
   }
 
-  void updatePenindakDetail(String nik) {
+  void updatePenindakDetail(String? nik) {
     final data = state.penindakDetail?.copyWith(nik: nik);
     if (data != null) {
       state = state.copyWith(penindakDetail: data);
     }
   }
 
-  void updateAdminDetail(String nik) {
+  void updateAdminDetail(String? nik) {
     final data = state.adminDetail?.copyWith(nik: nik);
     if (data != null) {
       state = state.copyWith(adminDetail: data);

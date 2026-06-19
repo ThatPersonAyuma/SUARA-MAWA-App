@@ -2,47 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:suara_mawa/screens/admin/admin_dashboard_screen.dart';
 import 'package:suara_mawa/screens/admin/helpers/api.dart';
 
-final List<User> users = [
-  User(
-    name: 'mas Jonny',
-    email: 'Jonny@unej.mail.ac.id',
-    role: 'Admin',
-    lastLogin: '2h ago',
-    departemenId: 'DEPT-001',
-    nik: '3509010101900001',
-    // nip: '197001012000011001',
-    noTelp: '081234567890',
-  ),
-  User(
-    name: 'Adoft Kittler',
-    email: 'Kittler@unej.mail.ac.id',
-    role: 'Penindak',
-    lastLogin: '1d ago',
-    departemenId: 'DEPT-002',
-    nik: '3509020202880002',
-    // nip: '198802022010011002',
-    noTelp: '082233445566',
-  ),
-  User(
-    name: 'Reza Auditore',
-    email: '242410103000@unej.mail.ac.id',
-    role: 'Mahasiswa',
-    lastLogin: '1h ago',
-    id: 'ID: 2024011',
-    nim: '242410103000',
-  ),
-  User(
-    name: 'ladesh',
-    email: 'ladesh@unej.mail.ac.id',
-    role: 'Penindak',
-    lastLogin: '6h ago',
-    departemenId: 'DEPT-003',
-    nik: '3509030303900003',
-    // nip: '199003032015011003',
-    noTelp: '085344556677',
-  ),
-];
-
 Color _roleColor(String role) {
   switch (role) {
     case 'Admin':
@@ -116,7 +75,7 @@ class _AdminAccountManagementState extends State<AdminAccountManagement> {
     final UserPageData? userPageData = await _adminApiHelper.getUsers(
       keyword: _search,
       userRoleId: int.tryParse(_roleFilter),
-      page: _page.toString(),
+      page: _page,
     );
     setState(() {
       if (userPageData != null) {
@@ -124,6 +83,11 @@ class _AdminAccountManagementState extends State<AdminAccountManagement> {
         meta = userPageData.metaData;
         _pageSize = meta?.pageSize ?? 1;
         _page = meta?.currentPages ?? 1;
+      }else{
+        users = [];
+        meta = null;
+        _pageSize = 0;
+        _page = 0;
       }
     });
   }
@@ -255,6 +219,35 @@ class _AdminAccountManagementState extends State<AdminAccountManagement> {
                               ],
                             ),
                             const SizedBox(height: 6),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: getUsersData,
+                                icon: const Icon(
+                                  Icons.search,
+                                  size: 18,
+                                ),
+                                label: const Text(
+                                  'Cari',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: kNavy,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
                           ],
                         ),
                       ),
@@ -298,13 +291,13 @@ class _AdminAccountManagementState extends State<AdminAccountManagement> {
                       children: [
                         _pageBtn(Icons.chevron_left, _page > 0, () async {
                           setState(() {
-                              _page--;
-                              _isLoading = true;
-                            });
-                            await getUsersData();
-                            setState(() {
-                              _isLoading = false;
-                            });
+                            _page--;
+                            _isLoading = true;
+                          });
+                          await getUsersData();
+                          setState(() {
+                            _isLoading = false;
+                          });
                         }),
                         const SizedBox(width: 6),
                         _pageBtn(
@@ -398,23 +391,31 @@ class _AdminAccountManagementState extends State<AdminAccountManagement> {
       ],
     ),
   );
-
-  void _showForm(BuildContext context, {User? existing}) {
-    showDialog(
+  Future<void> _showForm(BuildContext context, {User? existing}) async {
+    final res = await showDialog(
       context: context,
       builder: (_) => UserFormDialog(
         departmentData: departmentData,
         existing: existing,
-        onSave: (u) => setState(() {
-          if (existing != null) {
-            final i = users.indexOf(existing);
-            if (i != -1) users[i] = u;
-          } else {
-            users.insert(0, u);
-          }
-        }),
       ),
     );
+    if (res != null) {
+      setState(() {
+        if (existing != null) {
+          final i = users.indexOf(existing);
+          if (i != -1) users[i] = res;
+        } else {
+          users.insert(0, res);
+        }
+      });
+      if(!mounted)return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        const SnackBar(
+          content: Text("Berhasil menyimpan user"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   void _showMenu(BuildContext context, User u) {
@@ -549,7 +550,7 @@ class UserCard extends StatelessWidget {
                       children: [
                         Text(
                           user.id.isNotEmpty
-                              ? '${user.name} · ${user.id}'
+                              ? user.name // ? '${user.name} · ${user.id}'
                               : user.name,
                           style: const TextStyle(
                             fontSize: 13,
@@ -667,12 +668,10 @@ class UserCard extends StatelessWidget {
 
 class UserFormDialog extends StatefulWidget {
   final User? existing;
-  final Function(User) onSave;
 
   final Map<String, int> departmentData;
 
   UserFormDialog({
-    required this.onSave,
     required this.departmentData,
     this.existing,
   });
@@ -684,6 +683,7 @@ class UserFormDialogState extends State<UserFormDialog> {
   late final TextEditingController _name, _email, _id;
   late final TextEditingController _departemenId, _nik, _noTelp, _pw;
   int? departmentId;
+  final _apiHelper = AdminAPIHelper();
   // String _status = 'Active';
 
   // static const _statuses = ['Active', 'Inactive', 'Suspended'];
@@ -794,26 +794,27 @@ class UserFormDialogState extends State<UserFormDialog> {
           child: const Text('Batal', style: TextStyle(color: Colors.grey)),
         ),
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             if (_name.text.trim().isEmpty || _email.text.trim().isEmpty) return;
-            widget.onSave(
-              User(
-                name: _name.text.trim(),
-                email: _email.text.trim(),
-                role: currentRole,
-                // status: _status,
-                lastLogin: isEdit ? widget.existing!.lastLogin : 'Baru saja',
-                id: _id.text.trim(),
-                departemenId: _departemenId.text.trim(),
-                nik: _nik.text.trim(),
-                // nip: _nip.text.trim(),
-                noTelp: _noTelp.text.trim(),
-                nim: currentRole == 'Mahasiswa'
-                    ? _id.text.trim()
-                    : (isEdit ? widget.existing!.nim : ''),
-              ),
+            final (res, msg) = await _apiHelper.addPenindak(
+              name: _name.text,
+              email: _email.text,
+              phoneNumber: _noTelp.text,
+              password: _pw.text,
+              nik: _nik.text,
+              departmentId: departmentId ?? 0,
             );
-            Navigator.pop(context);
+            if(res){
+              Navigator.pop(context, User(
+                name: _name.text, email: _email.text, role: 'Penindak'));
+            }else{
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Gagal Menambahkan: $msg"),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: kNavy,
@@ -824,7 +825,7 @@ class UserFormDialogState extends State<UserFormDialog> {
             elevation: 0,
           ),
           child: const Text(
-            'Simpan',
+            'Tambah',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
