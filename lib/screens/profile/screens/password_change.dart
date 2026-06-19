@@ -263,6 +263,9 @@ class _UpdatePasswordPageState extends ConsumerState<UpdatePasswordPage> {
                                     ),
                                   ),
                                 );
+                                ref
+                                    .read(userControllerProvider.notifier)
+                                    .updateAttribute(token: msg);
                               } else {
                                 final message = msg ?? 'Tidak diketahui';
                                 ScaffoldMessenger.of(context).showSnackBar(

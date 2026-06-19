@@ -446,7 +446,7 @@ class AuthService {
         },
       );
       this.storeToken(response.data['token']);
-      return (true, null);
+      return (true, response.data['token'].toString());
     } on DioException catch (e) {
       return (false, e.response?.data['message'].toString());
     } catch (e) {
