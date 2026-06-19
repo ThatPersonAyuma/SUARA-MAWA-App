@@ -41,7 +41,7 @@ class _NimFormState extends State<NimForm> {
     final res = (await _authService.getDetail(isMahasiswa: _isMahasiswa));
 
     final isFilled = res != null;
-    if (isFilled) {
+    if (isFilled && mounted) {
       if (_isMahasiswa) {
         setState(() {
           textController.text = res['nim'];
@@ -52,20 +52,20 @@ class _NimFormState extends State<NimForm> {
         });
       }
     }
-    setState(() {
-      email = user?.email ?? 'Not found';
-      _nimFilled = isFilled;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        email = user?.email ?? 'Not found';
+        _nimFilled = isFilled;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<bool> _handleAppendNIM() async {
     setState(() {
       _isLoading = true;
     });
-    var (isSucces, content) = await _authService.appendNIM(
-      textController.text,
-    );
+    var (isSucces, content) = await _authService.appendNIM(textController.text);
     print('IsSuccess: $isSucces');
     if (isSucces) {
       Navigator.pushReplacement(
@@ -147,7 +147,9 @@ class _NimFormState extends State<NimForm> {
                         controller: textController,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return _isMahasiswa ? 'Masukkan NIM' : 'Masukkan NIK';
+                            return _isMahasiswa
+                                ? 'Masukkan NIM'
+                                : 'Masukkan NIK';
                           }
                           return null;
                         },
@@ -190,7 +192,9 @@ class _NimFormState extends State<NimForm> {
                                 ),
                               )
                             : Text(
-                                _isMahasiswa ? "Tambahkan NIM" : 'Tambahkan NIK',
+                                _isMahasiswa
+                                    ? "Tambahkan NIM"
+                                    : 'Tambahkan NIK',
                                 style: TextStyle(
                                   color: AppColors.white,
                                   fontSize: 16,

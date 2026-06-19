@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:suara_mawa/screens/auth/controller/auth_service.dart';
+import 'package:suara_mawa/screens/auth/index.dart';
 import 'package:suara_mawa/utils/app_colors.dart';
 import 'package:suara_mawa/utils/photo_galery.dart';
 import 'package:suara_mawa/utils/user_controller.dart';
@@ -28,6 +29,7 @@ class _UpdateProfilePageState extends ConsumerState<UpdateProfilePage> {
   late final TextEditingController nomorHPController;
   late final UserModel userModel;
   late final TextEditingController identityController;
+  late final TextEditingController nameController;
   bool _isLoading = false;
   Future<void> _pickImage() async {
     File? image = await pickImage(context);
@@ -51,6 +53,18 @@ class _UpdateProfilePageState extends ConsumerState<UpdateProfilePage> {
     };
     nomorHPController = TextEditingController(text: initialValue);
     identityController = TextEditingController(text: identityValue);
+    nameController = TextEditingController(text: userModel.user?.name);
+    nomorHPController.addListener(() {
+      setState(() {});
+    });
+
+    identityController.addListener(() {
+      setState(() {});
+    });
+
+    nameController.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
@@ -61,41 +75,59 @@ class _UpdateProfilePageState extends ConsumerState<UpdateProfilePage> {
   }
 
   Future<void> _updateProfile() async {
-    bool isMahasiswa = userModel.mahasiswaDetail != null;
-    bool noChange = false;
-    if (nomorHPController.text == userModel.user?.phoneNumber) {
-      if (isMahasiswa) {
-        if (identityController.text == userModel.mahasiswaDetail!.nim) {
-          noChange = true;
-        }
-      } else {
-        if (userModel.penindakDetail != null) {
-          if (identityController.text == userModel.penindakDetail!.nik) {
-            noChange = true;
-          }
-        } else {
-          if (identityController.text == userModel.adminDetail!.nik) {
-            noChange = true;
-          }
-        }
-      }
-    }
-    if (noChange) {
-      SnackBar(
-        content: Text("Tidak ada data yang diperbaharui"),
-        backgroundColor: Colors.black,
-      );
-      return;
-    }
     setState(() {
       _isLoading = true;
     });
+    bool isMahasiswa = userModel.mahasiswaDetail != null;
+    bool noChange = true;
+    String? nomorHP, nim, nik, name;
+    if (nomorHPController.text != userModel.user?.phoneNumber) {
+      noChange = false;
+      nomorHP = nomorHPController.text;
+    }
+    if (isMahasiswa) {
+      if (identityController.text != userModel.mahasiswaDetail!.nim) {
+        noChange = false;
+        nim = identityController.text;
+      }
+    } else {
+      if (userModel.penindakDetail != null) {
+        if (identityController.text != userModel.penindakDetail!.nik) {
+          noChange = false;
+          nik = identityController.text;
+        }
+      } else {
+        if (identityController.text != userModel.adminDetail!.nik) {
+          noChange = false;
+          nik = identityController.text;
+        }
+      }
+    }
+    if (nameController.text != userModel.user?.name) {
+      noChange = false;
+      name = nameController.text;
+    }
+    if (selectedImage != null) {
+      noChange = false;
+    }
+    if (noChange) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Tidak ada data yang diperbaharui"),
+          backgroundColor: Colors.black,
+        ),
+      );
+      return;
+    }
     final res = await _authService.updateProfile(
-      nim: isMahasiswa ? identityController.text : null,
-      nik: !isMahasiswa ? identityController.text : null,
-      phoneNumber: nomorHPController.text != userModel.user?.phoneNumber
-          ? nomorHPController.text
-          : null,
+      nim: nim,
+      nik: nik,
+      phoneNumber: nomorHP,
+      name: name,
+      file: selectedImage,
     );
     setState(() {
       _isLoading = false;
@@ -107,157 +139,298 @@ class _UpdateProfilePageState extends ConsumerState<UpdateProfilePage> {
           backgroundColor: Colors.green,
         ),
       );
+      if (selectedImage != null) {
+        ref.read(userControllerProvider.notifier).updatePhotoProfile();
+      }
+      ref.read(userControllerProvider.notifier).updateMahasiswaDetail(
+        
+      );
+      if (nomorHPController.text != userModel.user?.phoneNumber && mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const FirstPage()),
+          (Route<dynamic> route) => false,
+        );
+      }
     } else {
       _authService.showError("Gagal Update Profile");
     }
   }
 
+  bool get hasChange {
+    bool change = false;
+
+    final isMahasiswa = userModel.mahasiswaDetail != null;
+
+    if (nomorHPController.text != userModel.user?.phoneNumber) {
+      change = true;
+    }
+
+    if (isMahasiswa) {
+      if (identityController.text != userModel.mahasiswaDetail!.nim) {
+        change = true;
+      }
+    } else {
+      if (userModel.penindakDetail != null) {
+        if (identityController.text != userModel.penindakDetail!.nik) {
+          change = true;
+        }
+      } else {
+        if (identityController.text != userModel.adminDetail!.nik) {
+          change = true;
+        }
+      }
+    }
+
+    if (nameController.text != userModel.user?.name) {
+      change = true;
+    }
+
+    if (selectedImage != null) {
+      change = true;
+    }
+
+    print("Ada perubahan: $change");
+    return change;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: buildAppBar(ref),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: SingleChildScrollView(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color.fromARGB(170, 0, 0, 0),
-                            width: 2,
-                          ),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(45),
-                          child: selectedImage != null
-                              ? Image.file(
-                                  selectedImage!,
-                                  width: 90,
-                                  height: 90,
-                                  fit: BoxFit.cover,
-                                )
-                              : CircleAvatar(
-                                  radius: 50,
-                                  backgroundImage: NetworkImage(
-                                    "${const String.fromEnvironment('SERVER_BASE_URL', defaultValue: '')}/users/${ref.watch(userControllerProvider.select((um) => um.user?.name))}/profile/photo",
-                                    headers: {
-                                      'Authorization':
-                                          "Bearer ${ref.watch(userControllerProvider.select((um) => um.token))}",
-                                    },
-                                  ),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
+    return PopScope(
+      canPop: !hasChange,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
 
-                      TextButton(
-                        onPressed: _pickImage,
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.blue,
-                          textStyle: const TextStyle(
-                            decoration: TextDecoration.underline,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        child: const Text("Edit"),
-                      ),
+        final shouldLeave = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Konfirmasi'),
+            content: const Text(
+              'Perubahan belum disimpan. Keluar dari halaman?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Keluar'),
+              ),
+            ],
+          ),
+        );
 
-                      const SizedBox(height: 16),
-
-                      TextFormField(
-                        style: textStyle,
-                        inputFormatters: [
-                          TextInputFormatter.withFunction((oldValue, newValue) {
-                            if (RegExp(
-                              r'^\+?[0-9]*$',
-                            ).hasMatch(newValue.text)) {
-                              return newValue;
-                            }
-                            return oldValue;
-                          }),
-                        ],
-                        decoration: InputDecoration(
-                          hintStyle: textStyle,
-                          hintText: 'Nomor Telepon',
-                          labelStyle: textStyle,
-                          labelText: 'Nomor Telepon',
-                          errorStyle: errorStyle,
-                          border: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.black,
-                              width: 2.0,
+        if (shouldLeave == true && this.mounted) {
+          Navigator.pop(this.context);
+        }
+      },
+      child: Scaffold(
+        appBar: buildAppBar(ref),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                child: SingleChildScrollView(
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color.fromARGB(170, 0, 0, 0),
+                                width: 2,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(45),
+                              child: selectedImage != null
+                                  ? Image.file(
+                                      selectedImage!,
+                                      width: 90,
+                                      height: 90,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : CircleAvatar(
+                                      radius: 50,
+                                      backgroundImage: NetworkImage(
+                                        "${const String.fromEnvironment('SERVER_BASE_URL', defaultValue: '')}/users/${ref.watch(userControllerProvider.select((um) => um.user?.name))}/profile/photo?dump=${ref.watch(userControllerProvider.select((um) => um.counter))}",
+                                        headers: {
+                                          'Authorization':
+                                              "Bearer ${ref.watch(userControllerProvider.select((um) => um.token))}",
+                                        },
+                                      ),
+                                    ),
                             ),
                           ),
-                        ),
-                        controller: nomorHPController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Masukkan nomor telepon';
-                          }
-                          if (!idPhoneRegex.hasMatch(value)) {
-                            return 'Cek kembali nomor telepon';
-                          }
-                          return null;
-                        },
-                      ),
-                      const Text(
-                        "Mengganti nomor telepon akan memerlukan verifikasi dengan OTP",
-                      ),
-                      const SizedBox(height: 16),
-                      if (userModel.mahasiswaDetail != null)
-                        MahasiswaDetailForm(
-                          identityController: identityController,
-                        ),
-                      if (userModel.penindakDetail != null)
-                        PenindakDetailForm(
-                          identityController: identityController,
-                        ),
-                      if (userModel.adminDetail != null)
-                        AdminDetailForm(identityController: identityController),
+                          const SizedBox(height: 8),
 
-                      const SizedBox(height: 20),
-
-                      SizedBox(
-                        width:
-                            double.infinity, // Expands to full available width
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            if (_formKey.currentState!.validate()) {
-                              setState(() => _isLoading = true);
-                              await _updateProfile();
-                              setState(() => _isLoading = false);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                AppColors.primary, // Background color
-                            foregroundColor:
-                                Colors.white, // Text and icon color
+                          TextButton(
+                            onPressed: _pickImage,
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.blue,
+                              textStyle: const TextStyle(
+                                decoration: TextDecoration.underline,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            child: const Text("Edit"),
                           ),
-                          child: const Text("Perbarui", style: TextStyle()),
-                        ),
+
+                          if (selectedImage != null)
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  selectedImage = null;
+                                });
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                textStyle: const TextStyle(
+                                  decoration: TextDecoration.underline,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              child: const Text("Hapus Foto"),
+                            ),
+
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            style: textStyle,
+                            decoration: InputDecoration(
+                              hintStyle: textStyle,
+                              hintText: 'Nama',
+                              labelStyle: textStyle,
+                              labelText: 'Nama',
+                              errorStyle: errorStyle,
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.black,
+                                  width: 2.0,
+                                ),
+                              ),
+                            ),
+                            controller: nameController,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Masukkan nama';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            style: textStyle,
+                            inputFormatters: [
+                              TextInputFormatter.withFunction((
+                                oldValue,
+                                newValue,
+                              ) {
+                                if (RegExp(
+                                  r'^\+?[0-9]*$',
+                                ).hasMatch(newValue.text)) {
+                                  return newValue;
+                                }
+                                return oldValue;
+                              }),
+                            ],
+                            decoration: InputDecoration(
+                              hintStyle: textStyle,
+                              hintText: 'Nomor Telepon',
+                              labelStyle: textStyle,
+                              labelText: 'Nomor Telepon',
+                              errorStyle: errorStyle,
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.black,
+                                  width: 2.0,
+                                ),
+                              ),
+                            ),
+                            controller: nomorHPController,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Masukkan nomor telepon';
+                              }
+                              if (!idPhoneRegex.hasMatch(value)) {
+                                return 'Cek kembali nomor telepon';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "Mengganti nomor telepon akan memerlukan verifikasi dengan OTP",
+                          ),
+
+                          const SizedBox(height: 16),
+                          if (userModel.mahasiswaDetail != null)
+                            MahasiswaDetailForm(
+                              identityController: identityController,
+                            ),
+                          if (userModel.penindakDetail != null)
+                            PenindakDetailForm(
+                              identityController: identityController,
+                            ),
+                          if (userModel.adminDetail != null)
+                            AdminDetailForm(
+                              identityController: identityController,
+                            ),
+
+                          const SizedBox(height: 20),
+
+                          SizedBox(
+                            width: double
+                                .infinity, // Expands to full available width
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (_formKey.currentState!.validate()) {
+                                  setState(() => _isLoading = true);
+                                  await _updateProfile();
+                                  setState(() => _isLoading = false);
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    AppColors.primary, // Background color
+                                foregroundColor:
+                                    Colors.white, // Text and icon color
+                              ),
+                              child: const Text("Perbarui", style: TextStyle()),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (_isLoading)
-              const Opacity(
-                opacity: 0.6,
-                child: ModalBarrier(dismissible: false, color: Colors.black),
-              ),
-            if (_isLoading) const Center(child: CircularProgressIndicator()),
-          ],
+              if (_isLoading)
+                const Opacity(
+                  opacity: 0.6,
+                  child: ModalBarrier(dismissible: false, color: Colors.black),
+                ),
+              if (_isLoading) const Center(child: CircularProgressIndicator()),
+            ],
+          ),
         ),
       ),
     );

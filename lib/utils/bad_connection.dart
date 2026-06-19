@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:suara_mawa/screens/auth/index.dart';
 
 const kNavy = Color(0xFF1A2C5B);
 const kTeal = Color(0xFF4DD0C4);
@@ -6,8 +7,7 @@ const kRed  = Color(0xFFE53935);
 const kBg   = Color(0xFFF5F6FA);
 
 class NoInternetPage extends StatelessWidget {
-  final VoidCallback onRetry;
-  const NoInternetPage({super.key, required this.onRetry});
+  const NoInternetPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +49,12 @@ class NoInternetPage extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: onRetry,
+                  onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const FirstPage()),
+                      );
+                    },
                   icon: const Icon(Icons.refresh_outlined, size: 18),
                   label: const Text('Coba Lagi',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),

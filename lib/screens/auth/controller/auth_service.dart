@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -8,15 +10,31 @@ import 'package:suara_mawa/screens/admin/admin_dashboard_screen.dart';
 import 'package:suara_mawa/screens/aspirasi/aspirasi_main_screen.dart';
 import 'package:suara_mawa/screens/auth/index.dart';
 import 'package:suara_mawa/screens/penindak/penindak_main_screen.dart';
-import 'package:suara_mawa/utils/local_notif.dart';
+import 'package:suara_mawa/utils/bad_connection.dart';
+import 'package:suara_mawa/utils/server_down.dart';
 import 'package:suara_mawa/utils/user_controller.dart';
 import 'package:suara_mawa/widgets/datas.dart';
 
 class AuthInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (err.type == DioExceptionType.connectionError ||
+        err.error is SocketException) {
+      NavigationService.navigatorKey.currentState?.pushReplacement(
+        MaterialPageRoute(builder: (_) => const NoInternetPage()),
+      );
+      return handler.next(err);
+    }
+
     if (err.response != null && err.response!.data != null) {
-      AuthService().HandleError(err.response!.data["code"]);
+      if (err.response?.statusCode == 502 ||
+          err.response!.data.toString().contains("is offline")) {
+        NavigationService.navigatorKey.currentState?.pushReplacement(
+          MaterialPageRoute(builder: (_) => const ServerDownPage()),
+        );
+      } else {
+        AuthService().HandleError(err.response!.data["code"]);
+      }
     }
     return handler.next(err);
   }
@@ -58,6 +76,7 @@ class AuthService {
         '/user/check',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
+
       final user = User.fromJson(response.data);
       print(response);
       ref
@@ -371,7 +390,7 @@ class AuthService {
     }
   }
 
-  Future<bool> updatePassword(
+  Future<(bool, String?)> updatePassword(
     String newPassoword,
     String currentPassword,
   ) async {
@@ -386,15 +405,13 @@ class AuthService {
           "revokeOtherSessions": true,
         },
       );
-      response.data['token'];
-      return true;
+      this.storeToken(response.data['token']);
+      return (true, null);
     } on DioException catch (e) {
-      print(e.toString());
-      print(e.response?.data);
-      return false;
+      return (false, e.response?.data['message'].toString());
     } catch (e) {
       print(e.toString());
-      return false;
+      return (false, null);
     }
   }
 
@@ -427,16 +444,44 @@ class AuthService {
     }
   }
 
-  Future<bool> updateProfile({String? nim, String? nik, String? phoneNumber}) async {
+  Future<bool> updateProfile({
+    String? nim,
+    String? nik,
+    String? phoneNumber,
+    File? file,
+    String? name,
+  }) async {
     try {
+      print("$nim, $nik, $phoneNumber, $file, $name");
+      // return true;
       final token = await this.getToken();
-      await _dio.post(
+      FormData formData = FormData.fromMap({
+        'nim': nim,
+        'nik': nik,
+        'phoneNumber': phoneNumber,
+        'name': name,
+        if (file != null)
+          'file': await MultipartFile.fromFile(
+            file.path,
+            filename: file.path.split('/').last,
+          ),
+      });
+      final res = await _dio.post(
         '/user/update',
-        data: {'nim': nim, 'nik': nik, 'phoneNumber': phoneNumber},
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        data: formData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
       );
-      return true;
+      if (res.data['status'] == 'success') {
+        return true;
+      }
+      return false;
     } catch (e) {
+      print(e.toString());
       return false;
     }
   }
@@ -500,7 +545,11 @@ class AuthService {
 
       default:
         if (code.isNotEmpty) {
-          // showError("Error: $code");
+          showError("Error: $code");
+        }else{
+          NavigationService.navigatorKey.currentState?.pushReplacement(
+          MaterialPageRoute(builder: (_) => const FirstPage()),
+        );
         }
     }
   }
