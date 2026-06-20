@@ -41,13 +41,13 @@ final class UserControllerProvider
   }
 }
 
-String _$userControllerHash() => r'432aa7d057d86ff56c9039c30f6f8f70c4eb87bf';
+String _$userControllerHash() => r'b672dbd1c77b1dcaaad1ba997eb33189ec1edc77';
 
 abstract class _$UserController extends $Notifier<UserModel> {
   UserModel build();
   @$mustCallSuper
   @override
-  void runBuild() {
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<UserModel, UserModel>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$UserController extends $Notifier<UserModel> {
               Object?,
               Object?
             >;
-    element.handleCreate(ref, build);
+    return element.handleCreate(ref, build);
   }
 }
